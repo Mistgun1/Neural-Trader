@@ -1,6 +1,9 @@
+#ifndef DATA_H
+#define DATA_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "neural.h"
 
 double* convert_csv_data(char* filename){
 
@@ -36,7 +39,7 @@ double* convert_csv_data(char* filename){
                 value = strtok(NULL, ",");
                 col++;
             }
-            data[row] = (close - open) / open;
+            data[row] = 100 * (close - open) / open;
             row++;
         }
         fclose(fp);
@@ -44,3 +47,8 @@ double* convert_csv_data(char* filename){
     return data;
 }
 
+void free_data(double* data){
+    free(data);
+}
+
+#endif

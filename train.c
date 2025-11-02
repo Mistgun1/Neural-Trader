@@ -1,7 +1,9 @@
 #include "neural.h"
+#include "data.h"
 
 #define TRAINING_CANDLE_DATA 10000
-#define NUMBER_OF_CANDLES 100
+#define NUMBER_OF_CANDLES_INPUT 100
+#define TRADE_THRESHOLD 0.5 // percentage pnl to be considered a trade
 
 struct train_thread_args{
     layer** layers;
@@ -12,7 +14,7 @@ struct train_thread_args{
 
 void* train_thread(void* arg){
     struct train_thread_args* args = (struct train_thread_args*)arg;
-    for(int j = 0; j < NUMBER_OF_CANDLES; j++){
+    for(int j = 0; j < NUMBER_OF_CANDLES_INPUT; j++){
         args->layers[0]->neurons[j].value = args->training_candles[j];
     }
     gradient_descent(args->gradient ,STEP_SIZE ,args->layers ,args->correct_trade, EPOCH);
@@ -55,14 +57,14 @@ void train(layer* layers[LAYER_COUNT] ,int step_size, double* training_candles, 
     }
     
 
-    double candles_training_array[TRAINING_CANDLE_DATA / NUMBER_OF_CANDLES][NUMBER_OF_CANDLES];
+    double candles_training_array[TRAINING_CANDLE_DATA / NUMBER_OF_CANDLES_INPUT][NUMBER_OF_CANDLES_INPUT];
     for (int i = 0; i < TRAINING_CANDLE_DATA; i++){
-        for (int j = 0; j < NUMBER_OF_CANDLES; j++){
+        for (int j = 0; j < NUMBER_OF_CANDLES_INPUT; j++){
             candles_training_array[i][j] = training_candles[i];
         }
     }
 
-    for(int i = 0; i < (TRAINING_CANDLE_DATA / NUMBER_OF_CANDLES) / STEP_SIZE; i++){
+    for(int i = 0; i < (TRAINING_CANDLE_DATA / NUMBER_OF_CANDLES_INPUT) / STEP_SIZE; i++){
         pthread_t thread[STEP_SIZE];
         for (int j = 0; j < STEP_SIZE; j++){
             struct train_thread_args args;
@@ -100,4 +102,57 @@ void train(layer* layers[LAYER_COUNT] ,int step_size, double* training_candles, 
             free_layer(thread_gradients[j][i]);
         }
     }
+}
+
+
+int* create_correct_trades(double* data){
+    
+    int* correct_trades =  (int*)malloc(sizeof(int)*(TRAINING_CANDLE_DATA / NUMBER_OF_CANDLES_INPUT)); 
+    double sum = 0;
+    for (int i = 0; i < TRAINING_CANDLE_DATA; i++){
+        sum += data[i];
+        if (i % NUMBER_OF_CANDLES_INPUT == 0){
+            if (sum > TRADE_THRESHOLD){
+                correct_trades[i / NUMBER_OF_CANDLES_INPUT] = 0;
+            }
+            else if (sum < -TRADE_THRESHOLD){
+                correct_trades[i / NUMBER_OF_CANDLES_INPUT] = 1;
+            }
+            else{
+                correct_trades[i / NUMBER_OF_CANDLES_INPUT] = 2;
+            }
+        }
+    }
+    return correct_trades;
+}
+
+void free_correct_trades(int* correct_trades){
+    free(correct_trades);
+}
+
+int main(){
+    
+    layer* layers[LAYER_COUNT];
+    layers[0] = create_layer(NUMBER_OF_CANDLES_INPUT, NULL, true);
+    layers[1] = create_layer(10, layers[0], false);
+    layers[2] = create_layer(3, layers[1], false);
+
+    clock_t start = clock();
+    double* data = convert_csv_data("data.csv");
+    int* correct_trades = create_correct_trades(data);
+    train(layers, STEP_SIZE, data, correct_trades);
+
+    free_correct_trades(correct_trades);
+    free_data(data);
+
+    clock_t end = clock();
+    double duration = (double)(end - start) / CLOCKS_PER_SEC / 60;
+    printf("Training time: %f minutes\n", duration);
+
+    FILE *fptr;
+    fptr = fopen("traindata.txt", "wb");
+    for (int i = 1; i < LAYER_COUNT; i++){
+        fwrite(layers[i], sizeof(layer), 1, fptr);
+    }
+    fclose(fptr);
 }

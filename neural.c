@@ -12,13 +12,15 @@ layer* create_layer(int neuron_count, layer* previous_layer,bool random_fill){
     layer* new_layer = malloc(sizeof(layer));
     new_layer->neuron_count = neuron_count;
     new_layer->neurons = malloc(sizeof(neuron) * neuron_count);
-    foreach_neuron(*new_layer, i){
-        new_layer->neurons[i].weights = malloc(sizeof(double) * get_neuron_count(*previous_layer));
-        new_layer->neurons[i].bias = random_func(-1, 1);
-        new_layer->neurons[i].weight_count = get_neuron_count(*previous_layer);
-        if (random_fill){
-            foreach_weight(new_layer->neurons[i], j){
-                new_layer->neurons[i].weights[j] = random_func(-1, 1);
+    if (previous_layer != NULL){
+        foreach_neuron(*new_layer, i){
+            new_layer->neurons[i].weights = malloc(sizeof(double) * get_neuron_count(*previous_layer));
+            new_layer->neurons[i].bias = random_func(-1, 1);
+            new_layer->neurons[i].weight_count = get_neuron_count(*previous_layer);
+            if (random_fill){
+                foreach_weight(new_layer->neurons[i], j){
+                    new_layer->neurons[i].weights[j] = random_func(-1, 1);
+                }
             }
         }
     }
