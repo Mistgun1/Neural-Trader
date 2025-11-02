@@ -3,6 +3,7 @@
 
 #define TRAINING_CANDLE_DATA 10000
 #define NUMBER_OF_CANDLES_INPUT 100
+#define TRADE_PERIOD 20
 #define TRADE_THRESHOLD 0.5 // percentage pnl to be considered a trade
 
 struct train_thread_args{
@@ -109,19 +110,27 @@ int* create_correct_trades(double* data){
     
     int* correct_trades =  (int*)malloc(sizeof(int)*(TRAINING_CANDLE_DATA / NUMBER_OF_CANDLES_INPUT)); 
     double sum = 0;
-    for (int i = 0; i < TRAINING_CANDLE_DATA; i++){
+    int i = NUMBER_OF_CANDLES_INPUT;
+    while (i < TRAINING_CANDLE_DATA){
         sum += data[i];
-        if (i % NUMBER_OF_CANDLES_INPUT == 0){
+        i++;
+        if (i % TRADE_PERIOD == 0){
             if (sum > TRADE_THRESHOLD){
+                //buy
                 correct_trades[i / NUMBER_OF_CANDLES_INPUT] = 0;
             }
             else if (sum < -TRADE_THRESHOLD){
-                correct_trades[i / NUMBER_OF_CANDLES_INPUT] = 1;
+                //sell
+                correct_trades[i / TRADE_PERIOD] = 1;
             }
             else{
-                correct_trades[i / NUMBER_OF_CANDLES_INPUT] = 2;
+                //no entry
+                correct_trades[i / TRADE_PERIOD] = 2;
             }
+            sum = 0;
+            i += NUMBER_OF_CANDLES_INPUT - TRADE_PERIOD;
         }
+
     }
     return correct_trades;
 }
